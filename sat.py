@@ -1,6 +1,9 @@
 from skyfield.api import load, wgs84
-from datetime import datetime
+from datetime import datetime, timedelta
+from pytz import timezone
+import os
 
+eastern = timezone('US/Eastern')
 ts = load.timescale()
 
 
@@ -8,18 +11,25 @@ ts = load.timescale()
 # Settings
 
 # Position on Earth of the observer
-myPos = wgs84.latlon(+38.8212785,-77.082475)
+# Fairfax City, VA - +38.8498876,-77.2780489
+# Alexandria, VA - 38.8212785,-77.082475
+# Location:       Alexandria VA USA
+# Latitude:       38.766970°
+# Longitude:      -77.151200°
+ # Camp Snyder - 38.8287618,-77.666188
+myPos = wgs84.latlon(38.8287618,-77.666188)
 
 # Start Time for observations
 # t0 = ts.now()
-t0 = ts.utc(2023, 6, 24, 15)
+t0 = ts.utc(2023, 7, 21, 10)
 
 # End Time for observations
-t1 = ts.utc(2023, 6, 25, 21)
+t1 = t0 + timedelta(hours=14)
+# t1 = ts.utc(2023, 7, 21, 22)
 
 # Satellites to observe
 theseSats = [
-    "AO-109",
+    # "AO-109",
     "AO-07",
     "AO-91",
     "CAS-4B",
@@ -85,6 +95,31 @@ class SatPass:
         duration = self.endTime - self.startTime
         state = "*Possible Eclipse*" if self.inEclipse else ""
         return "%s\t%s\t%s\t%s\t%s\t%s\t%s" % (
+                self.startTime.astimezone(eastern).strftime('%Y %b %d %H:%M:%S'),
+                self.maxTime.astimezone(eastern).strftime('%Y %b %d %H:%M:%S'),
+                self.endTime.astimezone(eastern).strftime('%Y %b %d %H:%M:%S'),
+                self.satellite,
+                self.maxEl,
+                self.durationStr(),
+                state
+            ) 
+    def toCsv(self):
+        duration = self.endTime - self.startTime
+        state = "*Possible Eclipse*" if self.inEclipse else ""
+        return "%s,%s,%s,%s,%s,%s,%s" % (
+                self.startTime.astimezone(eastern).strftime('%Y %b %d %H:%M:%S'),
+                self.maxTime.astimezone(eastern).strftime('%Y %b %d %H:%M:%S'),
+                self.endTime.astimezone(eastern).strftime('%Y %b %d %H:%M:%S'),
+                self.satellite,
+                self.maxEl,
+                self.durationStr(),
+                state
+            )
+
+    def toTabUTC(self):
+        duration = self.endTime - self.startTime
+        state = "*Possible Eclipse*" if self.inEclipse else ""
+        return "%s\t%s\t%s\t%s\t%s\t%s\t%s" % (
                 self.startTime.utc_strftime('%Y %b %d %H:%M:%S'),
                 self.maxTime.utc_strftime('%Y %b %d %H:%M:%S'),
                 self.endTime.utc_strftime('%Y %b %d %H:%M:%S'),
@@ -93,7 +128,7 @@ class SatPass:
                 self.durationStr(),
                 state
             ) 
-    def toCsv(self):
+    def toCsvUTC(self):
         duration = self.endTime - self.startTime
         state = "*Possible Eclipse*" if self.inEclipse else ""
         return "%s,%s,%s,%s,%s,%s,%s" % (
@@ -104,7 +139,7 @@ class SatPass:
                 self.maxEl,
                 self.durationStr(),
                 state
-            ) 
+            )
 
 event_start = 0
 event_peak = 1
@@ -114,7 +149,6 @@ event_end = 2
 
 sats = load.tle_file(satUrl)
 print("Start of Pass\tMax Elevation Time\tEnd of Pass\tSatellite\tMax Elevation\tPass Duration\tNotes")
-
 
 
 
@@ -147,3 +181,6 @@ for thisSat in theseSats:
     for satPass in satPasses:
         print(satPass.toTab())
 
+tleFile = "dailytle.txt"
+if os.path.isfile(tleFile):
+    os.remove(tleFile)
